@@ -117,10 +117,15 @@ class AIOrb(ft.Stack):
 
     Idle: scale 1.0→1.04 over 3s ease-in-out, opacity 0.85→1.0.
     Thinking: three staggered concentric rings expand and fade.
+
+    The pulse is driven by `start(page)`, an async loop that flips the core
+    every half-period; Flet animates the transition between the two states.
     """
 
     def __init__(self, size: int = 120) -> None:
         self._size = size
+        self._thinking = False
+        self._task = None
         self._rings = [
             ft.Container(
                 width=size, height=size, border_radius=size / 2,
@@ -147,25 +152,51 @@ class AIOrb(ft.Stack):
             alignment=ft.Alignment.CENTER,
         )
 
-    def breathe(self) -> None:
-        self._core.scale = ft.Scale(1.04)
-        self._core.opacity = 1.0
-        self._core.update()
+    def start(self, page: ft.Page) -> None:
+        """Kick off the breathing loop (idempotent)."""
+        if self._task is None:
+            self._task = page.run_task(self._breathe_loop)
 
-    def relax(self) -> None:
-        self._core.scale = ft.Scale(1.0)
-        self._core.opacity = 0.9
-        self._core.update()
+    async def _breathe_loop(self) -> None:
+        import asyncio
+
+        expanded = False
+        while True:
+            await asyncio.sleep(t.D_BREATHE / 2000)
+            if self._thinking:
+                continue
+            expanded = not expanded
+            try:
+                self._core.scale = ft.Scale(1.04 if expanded else 1.0)
+                self._core.opacity = 1.0 if expanded else 0.88
+                self._core.update()
+            except Exception:
+                return  # control detached (tab switched away)
 
     def set_thinking(self, on: bool) -> None:
-        for i, ring in enumerate(self._rings):
+        self._thinking = on
+        if on:
+            self._core.scale = ft.Scale(1.06)
+            self._core.opacity = 1.0
+            self._core.shadow = ft.BoxShadow(blur_radius=56, color="#B07C5CFF")
+        else:
+            self._core.shadow = ft.BoxShadow(blur_radius=40, color="#807C5CFF")
+
+        for ring in self._rings:
             if on:
                 ring.opacity = 0.35
-                ring.scale = ft.Scale(1.6)
+                ring.scale = ft.Scale(1.7)
             else:
                 ring.opacity = 0.0
                 ring.scale = ft.Scale(1.0)
-            ring.update()
+
+        # The orb may not be mounted yet; update() raises in that case.
+        try:
+            self._core.update()
+            for ring in self._rings:
+                ring.update()
+        except Exception:
+            pass
 
 
 def waveform(seed: int = 0, bars: int = 22, height: int = 28) -> ft.Row:
@@ -224,28 +255,56 @@ def segmented(options: list[str], selected: int, on_change) -> ft.Container:
     )
 
 
-def bottom_nav(items: list[tuple[str, str]], selected: int, on_select) -> ft.Container:
-    """Floating frosted pill nav with a sliding gradient indicator."""
-    icons: list[ft.Control] = []
-    for i, (icon, _label) in enumerate(items):
+def bottom_nav(
+    items: list[tuple[str, str, str]], selected: int, on_select
+) -> ft.Container:
+    """Floating frosted pill nav.
+
+    Each item is `(outline_icon, filled_icon, label)`. The active item rises
+    4px, swaps outline→filled and sits on a gradient pill; the inactive ones
+    stay at 60% opacity. Matches the motion spec's 300ms easeOutQuint.
+    """
+    tabs: list[ft.Control] = []
+    for i, (icon_out, icon_fill, label) in enumerate(items):
         active = i == selected
-        icons.append(
+        tabs.append(
             ft.Container(
-                content=ft.Icon(
-                    icon, size=24,
-                    color=t.TEXT if active else t.TEXT_MUTED,
+                content=ft.Column(
+                    spacing=2,
+                    tight=True,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    controls=[
+                        ft.Icon(
+                            icon_fill if active else icon_out,
+                            size=22,
+                            color=t.TEXT if active else t.TEXT_MUTED,
+                        ),
+                        ft.Text(
+                            label,
+                            size=9,
+                            color=t.TEXT if active else t.TEXT_MUTED,
+                            opacity=0.85,
+                        ),
+                    ],
                 ),
-                padding=ft.Padding.symmetric(horizontal=18, vertical=10),
+                padding=ft.Padding.symmetric(horizontal=16, vertical=8),
                 border_radius=t.R_PILL,
                 gradient=ft.LinearGradient(colors=t.GRAD_PRIMARY) if active else None,
+                opacity=1.0 if active else 0.6,
                 on_click=lambda e, idx=i: on_select(idx),
                 ink=True,
                 animate=ft.Animation(t.D_TAB, EASE),
+                animate_opacity=ft.Animation(t.D_TAB, EASE),
                 offset=ft.Offset(0, -0.04) if active else ft.Offset(0, 0),
+                shadow=(
+                    ft.BoxShadow(blur_radius=24, color="#737C5CFF", offset=ft.Offset(0, 4))
+                    if active
+                    else None
+                ),
             )
         )
     return ft.Container(
-        content=ft.Row(icons, alignment=ft.MainAxisAlignment.SPACE_EVENLY),
+        content=ft.Row(tabs, alignment=ft.MainAxisAlignment.SPACE_EVENLY),
         height=72,
         margin=ft.Margin.symmetric(horizontal=t.PAGE_X),
         border_radius=t.R28,
@@ -257,7 +316,14 @@ def bottom_nav(items: list[tuple[str, str]], selected: int, on_select) -> ft.Con
 
 
 def thinking_dialog(page: ft.Page) -> ft.AlertDialog:
-    """The Myanmar duration-guard error dialog."""
+    """The Myanmar duration-guard error dialog.
+
+    Shown with `page.show_dialog(...)` and dismissed with `page.pop_dialog()`
+    — Flet 1.1 removed the old `page.open`/`page.close` pair.
+    """
+    def dismiss(_e) -> None:
+        page.pop_dialog()
+
     return ft.AlertDialog(
         modal=True,
         bgcolor=t.SURFACE,
@@ -295,7 +361,7 @@ def thinking_dialog(page: ft.Page) -> ft.AlertDialog:
                                 expand=True, height=48, alignment=ft.Alignment.CENTER,
                                 border_radius=t.R_PILL,
                                 gradient=ft.LinearGradient(colors=t.GRAD_PRIMARY),
-                                on_click=lambda e: page.close(dialog) if (dialog := _current_dialog(page)) else None,
+                                on_click=dismiss,
                                 ink=True,
                             ),
                             ft.Container(
@@ -303,7 +369,7 @@ def thinking_dialog(page: ft.Page) -> ft.AlertDialog:
                                 expand=True, height=48, alignment=ft.Alignment.CENTER,
                                 border_radius=t.R_PILL,
                                 border=ft.Border.all(1, t.BORDER_STRONG),
-                                on_click=lambda e: page.close(dialog) if (dialog := _current_dialog(page)) else None,
+                                on_click=dismiss,
                                 ink=True,
                             ),
                         ],
@@ -312,7 +378,3 @@ def thinking_dialog(page: ft.Page) -> ft.AlertDialog:
             ),
         ),
     )
-
-
-def _current_dialog(page: ft.Page) -> ft.AlertDialog | None:
-    return getattr(page, "_active_dialog", None)

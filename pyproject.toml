@@ -1,6 +1,6 @@
 [project]
 name = "movie-recap-myanmar"
-version = "1.0.0"
+version = "1.0.1"
 description = "Turn movies into 3-minute Myanmar-language recap videos"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -25,7 +25,7 @@ org = "com.amkyawdev"
 product = "Movie Recap Myanmar"
 company = "amkyawdev"
 copyright = "Copyright (c) 2026 amkyawdev"
-build_number = 1
+build_number = 2
 
 # Android adaptive-icon background. src/assets/icon.png is the source icon;
 # this colour sits behind it where transparency cannot survive.

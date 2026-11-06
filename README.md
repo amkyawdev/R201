@@ -33,6 +33,8 @@ movie-recap-myanmar/
 │   │   ├── video_processor.py        # ffmpeg render (subprocess)
 │   │   └── duration_guard.py         # the 3-minute rule
 │   └── models/project_state.py       # transcript, voice, overlay geometry
+├── tests/
+│   └── smoke_test.py                 # headless lifecycle + handler checks
 ├── pyproject.toml                    # Flet project config
 ├── buildozer.spec                    # optional Kivy backup
 └── README.md
@@ -65,6 +67,17 @@ cd design && python -m http.server 12001
 ```
 
 The board's tokens are mirrored 1:1 in `src/ui/theme.py`.
+
+## Tests
+
+```bash
+python tests/smoke_test.py
+```
+
+Builds `main()` against a mock Page and drives the event handlers the device
+actually calls — tab switching, the duration dialog, the orb breathing loop,
+voice selection, the export progress task and the duration guard. Construction
+alone is not enough: the v1.0.0 crash lived in a handler.
 
 ## Build the APK
 

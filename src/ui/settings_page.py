@@ -33,7 +33,7 @@ def build(page: ft.Page, cfg: dict, on_change) -> ft.Control:
     ffmpeg_ok = video_processor.available()
 
     return ft.Column(
-        expand=True, spacing=t.S5,
+        spacing=t.S5,
         controls=[
             ft.Text("ဆက်တင်", size=t.TYPE_DISPLAY, weight=ft.FontWeight.W_700, color=t.TEXT),
 
