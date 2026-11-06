@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Flet / build
+build/
+dist/
+.flutter-plugins-dependencies
+*.apk
+*.aab
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+*.log
+
+# Secrets — never commit keys
+.env
+.env.*
+secrets/
+*.jks
+*.keystore
+
+# Flet runtime cache
+src/.flet/
+.flet/
