@@ -8,29 +8,36 @@ license = { text = "Apache-2.0" }
 authors = [{ name = "amkyawdev" }]
 
 dependencies = [
-    "flet>=0.24.0",
+    "flet>=1.1.0",
     "requests>=2.31.0",
     "edge-tts>=6.1.9",
 ]
 
-[project.optional-dependencies]
-build = ["flet[all]>=0.24.0"]
+[dependency-groups]
+dev = [
+    "flet-cli>=1.1.0",
+    "flet-desktop>=1.1.0",
+    "flet-web>=1.1.0",
+]
 
 [tool.flet]
-app.path = "src"
-app.assets_dir = "assets"
-app.module = "main"
+org = "com.amkyawdev"
 product = "Movie Recap Myanmar"
 company = "amkyawdev"
 copyright = "Copyright (c) 2026 amkyawdev"
-
-[tool.flet.app]
-name = "movie_recap_myanmar"
 build_number = 1
 
+# Android adaptive-icon background. src/assets/icon.png is the source icon;
+# this colour sits behind it where transparency cannot survive.
+icon_background = "#0B0F14"
+
+[tool.flet.app]
+path = "src"
+
+# Cross-platform permission bundles, expanded by flet-cli into the Android
+# manifest. `photo_library` lets the user pick the movie to recap.
 [tool.flet.android]
-package = "com.amkyawdev.movierecap"
-adaptive_icon_background = "#0B0F14"
+permissions = ["photo_library"]
 
 [tool.ruff]
 line-length = 100

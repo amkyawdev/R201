@@ -7,16 +7,17 @@ subtitle/logo overlays, and an ffmpeg render, all wrapped in a Flet app.
 ```
 movie-recap-myanmar/
 ├── .github/workflows/app-build.yml   # GitHub Actions APK build
-├── assets/
-│   ├── logo_placeholder.png
-│   ├── fonts/Padauk-Regular.ttf      # Burmese font (swappable)
-│   └── voices/                       # 5 voice previews (edge-tts, cloud-rendered)
 ├── design/                           # interactive design board (HTML/CSS/JS)
 │   ├── index.html
 │   ├── styles.css
 │   ├── app.js
 │   └── proto.js
-├── src/
+├── src/                              # Flet app root (tool.flet.app.path)
+│   ├── assets/
+│   │   ├── icon.png                  # app icon for every platform
+│   │   ├── logo_placeholder.png
+│   │   ├── fonts/Padauk-Regular.ttf  # Burmese font (swappable)
+│   │   └── voices/                   # 5 voice previews (edge-tts)
 │   ├── main.py                       # Flet entry + BottomNavigationBar
 │   ├── ui/
 │   │   ├── theme.py                  # design tokens (single source of truth)
@@ -32,7 +33,7 @@ movie-recap-myanmar/
 │   │   ├── video_processor.py        # ffmpeg render (subprocess)
 │   │   └── duration_guard.py         # the 3-minute rule
 │   └── models/project_state.py       # transcript, voice, overlay geometry
-├── pyproject.toml
+├── pyproject.toml                    # Flet project config
 ├── buildozer.spec                    # optional Kivy backup
 └── README.md
 ```
@@ -45,6 +46,9 @@ pip install -r requirements.txt        # or: pip install "flet[all]" requests ed
 flet run src/main.py                   # desktop
 flet run --web --port 8550 src/main.py # browser
 ```
+
+The app root is `src/` (set by `tool.flet.app.path`), so assets live at
+`src/assets/`. `flet run src/main.py` picks that up automatically.
 
 Set `ASSEMBLYAI_API_KEY` in the environment before transcribing. The key is
 read at runtime and never written to disk.
