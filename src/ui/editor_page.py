@@ -268,8 +268,11 @@ def _draggable(model, preview_h: int, kind: str, on_change, guides):
         guides.update()
 
     def on_pan_update(e: ft.DragUpdateEvent) -> None:
-        left = max(0.0, (box.left or 0.0) + e.delta_x)
-        top = max(0.0, min(preview_h - 40, (box.top or 0.0) + e.delta_y))
+        # Flet 1.1 replaced the old `delta_x`/`delta_y` pair with an Offset.
+        delta = e.local_delta or e.global_delta
+        dx, dy = (delta.x, delta.y) if delta else (0.0, 0.0)
+        left = max(0.0, (box.left or 0.0) + dx)
+        top = max(0.0, min(preview_h - 40, (box.top or 0.0) + dy))
         box.left, box.top = left, top
         box.update()
 

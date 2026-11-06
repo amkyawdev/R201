@@ -75,6 +75,27 @@ def find(control, predicate):
     return [c for c in walk(control) if predicate(c)]
 
 
+def _drag_event(cls, control, *, delta=None):
+    """Build a drag event the way the Flutter client delivers one.
+
+    Flet 1.1's DragUpdateEvent carries `local_delta` as an Offset; the removed
+    `delta_x`/`delta_y` pair is what crashed the v1.0.1 editor on device.
+    """
+    kwargs = dict(
+        name="on_pan",
+        control=control,
+        local_position=ft.Offset(0, 0),
+        global_position=ft.Offset(0, 0),
+    )
+    if cls is ft.DragStartEvent:
+        kwargs["kind"] = ft.PointerDeviceType.TOUCH
+    if cls is ft.DragEndEvent:
+        kwargs["velocity"] = ft.Offset(0, 0)
+    if delta is not None:
+        kwargs["local_delta"] = delta
+    return cls(**kwargs)
+
+
 def main() -> int:
     page = MockPage()
     app.main(page)
@@ -168,6 +189,28 @@ def main() -> int:
     assert ran["n"] == 1, "export click did not schedule the progress task"
     export_btns[0].on_click(None)  # must be a no-op while busy? (busy flag is set inside)
     print("OK export button schedules the progress coroutine")
+
+    # ---- editor: pan handlers move the overlays ---------------------------
+    import ui.editor_page as ep
+
+    ep_page = MockPage()
+    state = ProjectState()
+    editor = ep.build(ep_page, state, lambda: None)
+
+    # Headless: the handlers call .update(), which needs a mounted page.
+    for c in walk(editor):
+        if hasattr(c, "update"):
+            c.update = lambda: None
+
+    gestures = find(editor, lambda c: type(c).__name__ == "GestureDetector")
+    assert len(gestures) == 2, f"expected subtitle + logo gestures, got {len(gestures)}"
+    before = (state.subtitle.x, state.subtitle.y)
+    for g in gestures:
+        g.on_pan_start(_drag_event(ft.DragStartEvent, g))
+        g.on_pan_update(_drag_event(ft.DragUpdateEvent, g, delta=ft.Offset(12, -8)))
+        g.on_pan_end(_drag_event(ft.DragEndEvent, g))
+    assert (state.subtitle.x, state.subtitle.y) != before, "pan did not move the overlay"
+    print("OK editor pan handlers move the overlays without raising")
 
     # ---- duration guard ----------------------------------------------------
     from core.duration_guard import check, fmt_mm
