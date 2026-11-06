@@ -37,8 +37,26 @@ jobs:
           python -m pip install --upgrade pip
           pip install "flet[all]>=1.1.0" requests edge-tts
 
+      # `flet build apk` fetches the CPython dist tarballs for every ABI from
+      # the flet-dev/python-build GitHub release inside a Gradle task
+      # (`serious_python_android:downloadDistArchive_<abi>`). That download is
+      # occasionally truncated, which Gradle reports as an unrelated-looking
+      # JSON parse error ("Unable to determine the current character"). It is
+      # transient, so retry rather than fail the release.
       - name: Build APK
-        run: flet build apk --project "Movie Recap Myanmar" --yes
+        run: |
+          for attempt in 1 2 3; do
+            echo "::group::flet build apk (attempt $attempt)"
+            if flet build apk --project "Movie Recap Myanmar" --yes; then
+              echo "::endgroup::"
+              exit 0
+            fi
+            echo "::endgroup::"
+            echo "Attempt $attempt failed; retrying after a short backoff."
+            sleep $((attempt * 30))
+          done
+          echo "flet build apk failed after 3 attempts" >&2
+          exit 1
 
       - name: Locate APK
         id: apk

@@ -31,10 +31,25 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install "flet[all]>=0.24.0" requests edge-tts
+          pip install "flet[all]>=1.1.0" requests edge-tts
 
+      # See release.yml: the CPython dist download inside
+      # `serious_python_android:downloadDistArchive_<abi>` occasionally returns
+      # a truncated body, which Gradle surfaces as a JSON parse error. Retry.
       - name: Build APK
-        run: flet build apk --project "Movie Recap Myanmar" --yes
+        run: |
+          for attempt in 1 2 3; do
+            echo "::group::flet build apk (attempt $attempt)"
+            if flet build apk --project "Movie Recap Myanmar" --yes; then
+              echo "::endgroup::"
+              exit 0
+            fi
+            echo "::endgroup::"
+            echo "Attempt $attempt failed; retrying after a short backoff."
+            sleep $((attempt * 30))
+          done
+          echo "flet build apk failed after 3 attempts" >&2
+          exit 1
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
